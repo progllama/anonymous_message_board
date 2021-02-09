@@ -13,6 +13,9 @@ use std::env;
 pub mod schema;
 pub mod models;
 
+use schema::messages;
+use models::{ Message, NewMessage };
+
 #[actix_web::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     HttpServer::new( || {
@@ -28,7 +31,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 async fn index() -> HttpResponse {
-    let messages = "Hello";
+    let messages = get_all_message().await;
+
+    let messages: Vec<String> = messages.iter().map(|msg| {
+        format!("{} {}<br>", msg.text, msg.create_at)
+    }).collect();
+    let messages = messages.concat();
+
     HttpResponse::Ok()
         .body(format!("
             <!DOCTYPE html>
@@ -49,14 +58,33 @@ async fn index() -> HttpResponse {
 }
 
 #[derive(Serialize, Deserialize)]
-struct Message {
+struct MessageForm {
     text: String
 }
 
-async fn create(message: web::Form<Message>) -> HttpResponse {
+async fn create(message: web::Form<MessageForm>) -> HttpResponse {
+    create_message(&message.text).await;
     HttpResponse::build(StatusCode::SEE_OTHER)
         .header(header::LOCATION, "/")
         .finish()
+}
+
+async fn get_all_message() -> Vec<Message> {
+    use schema::messages::dsl::*;
+    let con = establish_connection();
+    messages.select((id, text, create_at)).load::<Message>(&con).unwrap()
+}
+
+async fn create_message(text: &String) {
+    let connection = establish_connection();
+
+    let new_msg = NewMessage {
+        text: &text,
+    };
+
+    let _ = diesel::insert_into(messages::table)
+        .values(new_msg)
+        .execute(&connection);
 }
 
 pub fn establish_connection() -> PgConnection {
