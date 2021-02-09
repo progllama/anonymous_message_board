@@ -1,6 +1,18 @@
 use actix_web::{ HttpServer, App, HttpResponse, web, http::{ StatusCode, header} };
 use serde::{Serialize, Deserialize};
 
+#[macro_use]
+extern crate diesel;
+extern crate dotenv;
+
+use diesel::prelude::*;
+use diesel::pg::PgConnection;
+use dotenv::dotenv;
+use std::env;
+
+pub mod schema;
+pub mod models;
+
 #[actix_web::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     HttpServer::new( || {
@@ -45,4 +57,13 @@ async fn create(message: web::Form<Message>) -> HttpResponse {
     HttpResponse::build(StatusCode::SEE_OTHER)
         .header(header::LOCATION, "/")
         .finish()
+}
+
+pub fn establish_connection() -> PgConnection {
+    dotenv().ok();
+
+    let database_url = env::var("DATABASE_URL")
+        .expect("DATABASE_URL must be set");
+    PgConnection::establish(&database_url)
+        .expect(&format!("Error connecting to {}", database_url))
 }
