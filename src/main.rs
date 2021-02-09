@@ -33,10 +33,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 async fn index() -> HttpResponse {
     let messages = get_all_message().await;
 
-    let messages: Vec<String> = messages.iter().map(|msg| {
+    let messages = messages.iter().map(|msg| {
         format!("{} {}<br>", msg.text, msg.create_at)
-    }).collect();
-    let messages = messages.concat();
+    })
+    .collect::<Vec<_>>()
+    .concat();
 
     HttpResponse::Ok()
         .body(format!("
